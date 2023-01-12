@@ -1,0 +1,7 @@
+*.o
+*.d
+code/execproc
+code/execprocd
+code/cancela_proc
+code/termina_execprocessod
+code/testproc
