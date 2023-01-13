@@ -31,11 +31,13 @@ typedef struct {
 
 /**
  * Struct with process' informations, carried inside ListItem.
+ * @param parent ListItem that holds this item.
  * @param pid Process id number.
  * @param priority Priority in scheduler, the lower the faster.
  * @param params Process params vector.
  */
 struct Item {
+  ListItem* parent;
   int pid;
   int priority;
   char** params;
@@ -63,6 +65,14 @@ Item* createItem(int, int, char**);
  * @return Item in the list's position. NULL if fail.
  */
 Item* getItem(List*, unsigned);
+
+/**
+ * Finds the item with specified pid.
+ * @param list List to be popped.
+ * @param pid Id number of process to be popped.
+ * @return Item found with given pid. NULL if fail.
+ */
+Item* findItem(List*, int);
 
 /**
  * Puts a process struct into a ListItem struct and pushes into a list's front.
@@ -108,6 +118,14 @@ Item* popBack(List*);
  * @return Popped item.
  */
 Item* popItem(List*, unsigned);
+
+/**
+ * Deletes the item in the list and its ListItem container.
+ * @param list List to have item deleted.
+ * @param item Item to be deleted.
+ * @return Zero if success, failure otherwise.
+ */
+int deleteItem(List*, Item*);
 
 /**
  * Frees all memory allocation in list - items, itemlists, and the list itself.
