@@ -27,7 +27,7 @@ typedef struct {
   unsigned lenght;
   ListItem* first;
   ListItem* last;
-} List;
+} ProcList;
 
 /**
  * Struct with process' informations, carried inside ListItem.
@@ -47,7 +47,7 @@ struct Item {
  * Creates an empty dynamic double linked list of processes.
  * @return Empty dynamic double linked list of processes.
  */
-List* createList();
+ProcList* createList();
 
 /**
  * Creates a struct with all of a processes information.
@@ -64,7 +64,7 @@ Item* createItem(int, int, char**);
  * @param position Position of item wished to be taken.
  * @return Item in the list's position. NULL if fail.
  */
-Item* getItem(List*, unsigned);
+Item* getItem(ProcList*, unsigned);
 
 /**
  * Finds the item with specified pid.
@@ -72,21 +72,21 @@ Item* getItem(List*, unsigned);
  * @param pid Id number of process to be popped.
  * @return Item found with given pid. NULL if fail.
  */
-Item* findItem(List*, int);
+Item* findItem(ProcList*, int);
 
 /**
  * Puts a process struct into a ListItem struct and pushes into a list's front.
  * @param list List to push item to.
  * @param item Item to be pushed into list.
  */
-void pushFront(List*, Item*);
+void pushFront(ProcList*, Item*);
 
 /**
  * Puts a process struct into a ListItem struct and pushes into a list's back.
  * @param list List to push item to.
  * @param item Item to be pushed into list.
  */
-void pushBack(List*, Item*);
+void pushBack(ProcList*, Item*);
 
 /**
  * Puts a process struct into a ListItem struct, pushes into a list's position.
@@ -95,21 +95,21 @@ void pushBack(List*, Item*);
  * @param item Item to be pushed into list.
  * @return Zero if success, failure otherwise.
  */
-int insertItem(List*, unsigned, Item*);
+int insertItem(ProcList*, unsigned, Item*);
 
 /**
  * Takes first item from the list.
  * @param list List to be popped.
  * @return Popped item.
  */
-Item* popFront(List*);
+Item* popFront(ProcList*);
 
 /**
  * Takes last item from the list.
  * @param list List to be popped.
  * @return Popped item.
  */
-Item* popBack(List*);
+Item* popBack(ProcList*);
 
 /**
  * Takes item in position from the list.
@@ -117,7 +117,7 @@ Item* popBack(List*);
  * @param position Position of item to be popped.
  * @return Popped item.
  */
-Item* popItem(List*, unsigned);
+Item* popItem(ProcList*, unsigned);
 
 /**
  * Deletes the item in the list and its ListItem container.
@@ -125,18 +125,18 @@ Item* popItem(List*, unsigned);
  * @param item Item to be deleted.
  * @return Zero if success, failure otherwise.
  */
-int deleteItem(List*, Item*);
+int deleteItem(ProcList*, Item*);
 
 /**
  * Frees all memory allocation in list - items, itemlists, and the list itself.
  * @param list List to have its mallocs freed.
  */
-void freeList(List*);
+void freeList(ProcList*);
 
 /**
  * Prints all the processes' pids from first to last.
  * @param list List to have all its pids printed.
  */
-void printAll(List*);
+void printAll(ProcList*);
 
 #endif  // LIST_H

@@ -3,15 +3,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-List* createList() {
-  List* list = (List*)malloc(sizeof(List));
+ProcList* createList() {
+  ProcList* list = (ProcList*)malloc(sizeof(ProcList));
   list->lenght = 0;
   list->first = NULL;
   list->last = NULL;
   return list;
 }
 
-void pushFront(List* list, Item* item) {
+void pushFront(ProcList* list, Item* item) {
   ListItem* aux = (ListItem*)malloc(sizeof(ListItem));
   aux->item = item;
   item->parent = aux;
@@ -26,7 +26,7 @@ void pushFront(List* list, Item* item) {
   list->lenght++;
 }
 
-void pushBack(List* list, Item* item) {
+void pushBack(ProcList* list, Item* item) {
   ListItem* aux;
   if (list->lenght == 0) {
     pushFront(list, item);
@@ -42,7 +42,7 @@ void pushBack(List* list, Item* item) {
   list->lenght++;
 }
 
-int insertItem(List* list, unsigned position, Item* item) {
+int insertItem(ProcList* list, unsigned position, Item* item) {
   ListItem* iterator;
   ListItem* aux;
   if (position > list->lenght) {
@@ -71,7 +71,7 @@ int insertItem(List* list, unsigned position, Item* item) {
   return 0;
 }
 
-Item* getItem(List* list, unsigned position) {
+Item* getItem(ProcList* list, unsigned position) {
   ListItem* aux;
   if (position >= list->lenght) {
     return NULL;
@@ -83,7 +83,7 @@ Item* getItem(List* list, unsigned position) {
   return aux->item;
 }
 
-Item* popFront(List* list) {
+Item* popFront(ProcList* list) {
   ListItem* aux;
   Item* item;
   if (list->lenght == 0) {
@@ -106,7 +106,7 @@ Item* popFront(List* list) {
   return item;
 }
 
-Item* popBack(List* list) {
+Item* popBack(ProcList* list) {
   ListItem* aux;
   Item* item;
   if (list->lenght == 0) {
@@ -129,7 +129,7 @@ Item* popBack(List* list) {
   return item;
 }
 
-int deleteItem(List* list, Item* item) {
+int deleteItem(ProcList* list, Item* item) {
   if (item == NULL) {
     return -1;
   }
@@ -159,14 +159,14 @@ int deleteItem(List* list, Item* item) {
   return 0;
 }
 
-void freeList(List* list) {
+void freeList(ProcList* list) {
   while (list->lenght > 0) {
     free(popBack(list));
   }
   free(list);
 }
 
-Item* popItem(List* list, unsigned position) {
+Item* popItem(ProcList* list, unsigned position) {
   ListItem* iterator;
   Item* item;
   if (position >= list->lenght) {
@@ -200,7 +200,7 @@ Item* createItem(int pid, int priority, char** params) {
   return item;
 }
 
-void printAll(List* list) {
+void printAll(ProcList* list) {
   ListItem* aux = list->first;
   printf("printAll:\n");
   for (unsigned i = 0; i < list->lenght; i++) {
@@ -209,7 +209,7 @@ void printAll(List* list) {
   }
 }
 
-Item* findItem(List* list, int pid) {
+Item* findItem(ProcList* list, int pid) {
   ListItem* iterator = list->first;
   for (unsigned i = 0; i < list->lenght; i++) {
     if (iterator->item->pid == pid) {
@@ -220,11 +220,13 @@ Item* findItem(List* list, int pid) {
   return NULL;
 }
 
+// All working!
 // cc list.c -o list -Wall -Wextra -pedantic -g -O0
-// valgrind --leak-check=yes ./list
+// cppcheck list.c list.h
+// valgrind --leak-check=yes -s ./list
 /*
 int main() {
-  List* myList = createList();
+  ProcList* myList = createList();
   Item* aux;
   Item* item1 = createItem(1, 10, NULL);
   Item* item2 = createItem(2, 110, NULL);
