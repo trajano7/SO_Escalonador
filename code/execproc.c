@@ -14,6 +14,6 @@ int main(int argc, char *argv[]) {
 
   execl(argv[1], argv[1], NULL);
 
-  printf("Error - returned to execl in execproc!\n");
+  printf("Error - returned from execl in execproc!\n");
   return 0;
 }
