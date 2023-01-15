@@ -191,10 +191,11 @@ Item* popItem(ProcList* list, unsigned position) {
   return item;
 }
 
-Item* createItem(int pid, int priority, char** params) {
+Item* createItem(int pid, int priority, char* programName, char** params) {
   Item* item = (Item*)malloc(sizeof(Item));
   item->parent = NULL;
-  item->pid = pid;
+  item->pidVirtual = pid;
+  item->programName = programName;
   item->priority = priority;
   item->params = params;
   return item;
@@ -204,7 +205,7 @@ void printAll(ProcList* list) {
   ListItem* aux = list->first;
   printf("printAll:\n");
   for (unsigned i = 0; i < list->lenght; i++) {
-    printf("pid %d = %d\n", i, aux->item->pid);
+    printf("pid %d = %d\n", i, aux->item->pidVirtual);
     aux = aux->right;
   }
 }
@@ -212,7 +213,7 @@ void printAll(ProcList* list) {
 Item* findItem(ProcList* list, int pid) {
   ListItem* iterator = list->first;
   for (unsigned i = 0; i < list->lenght; i++) {
-    if (iterator->item->pid == pid) {
+    if (iterator->item->pidVirtual == pid) {
       return iterator->item;
     }
     iterator = iterator->right;
@@ -251,14 +252,14 @@ int main() {
   printAll(myList);
 
   printf("\nInit\n");
-  printf("first = %d\n", myList->first->item->pid);
-  printf("last = %d\n", myList->last->item->pid);
+  printf("first = %d\n", myList->first->item->pidVirtual);
+  printf("last = %d\n", myList->last->item->pidVirtual);
 
   if ((aux = popFront(myList)) != NULL) {
     printf("\npopFront\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
-    printf("aux = %d\n", aux->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
+    printf("aux = %d\n", aux->pidVirtual);
   } else {
     printf("\npopFront failed!\n");
   }
@@ -266,9 +267,9 @@ int main() {
 
   if ((aux = popBack(myList)) != NULL) {
     printf("\npopBack\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
-    printf("aux = %d\n", aux->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
+    printf("aux = %d\n", aux->pidVirtual);
   } else {
     printf("\npopBack failed!\n");
   }
@@ -276,34 +277,34 @@ int main() {
 
   pushFront(myList, item8);
   printf("\npushFront\n");
-  printf("first = %d\n", myList->first->item->pid);
-  printf("last = %d\n", myList->last->item->pid);
+  printf("first = %d\n", myList->first->item->pidVirtual);
+  printf("last = %d\n", myList->last->item->pidVirtual);
 
   pushBack(myList, item9);
   printf("\npushBack\n");
-  printf("first = %d\n", myList->first->item->pid);
-  printf("last = %d\n", myList->last->item->pid);
+  printf("first = %d\n", myList->first->item->pidVirtual);
+  printf("last = %d\n", myList->last->item->pidVirtual);
 
   if (insertItem(myList, 2, item10) == 0) {
     printf("\ninsertItem (pos = 2)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
   } else {
     printf("\ninsertItem (pos = 2) failed!\n");
   }
 
   if (insertItem(myList, 0, item11) == 0) {
     printf("\ninsertItem (pos = 0)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
   } else {
     printf("\ninsertItem (pos = 0) failed!\n");
   }
 
   if (insertItem(myList, myList->lenght, item12) == 0) {
     printf("\ninsertItem (pos = myList->length)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
   } else {
     printf("\ninsertItem (pos = myList->length) failed!\n");
   }
@@ -313,16 +314,16 @@ int main() {
 
   if ((aux = getItem(myList, 2)) != NULL) {
     printf("\ngetItem (pos = 2)\n");
-    printf("aux = %d\n", aux->pid);
+    printf("aux = %d\n", aux->pidVirtual);
   } else {
     printf("getItem (pos = 2) failed!\n");
   }
 
   if ((aux = popItem(myList, 2)) != NULL) {
     printf("\npopItem (pos = 2)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
-    printf("aux = %d\n", aux->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
+    printf("aux = %d\n", aux->pidVirtual);
   } else {
     printf("\npopItem (pos = 2) failed!\n");
   }
@@ -330,9 +331,9 @@ int main() {
 
   if ((aux = popItem(myList, 0)) != NULL) {
     printf("\npopItem (pos = 0)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
-    printf("aux = %d\n", aux->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
+    printf("aux = %d\n", aux->pidVirtual);
   } else {
     printf("\npopItem (pos = 0) failed!\n");
   }
@@ -340,9 +341,9 @@ int main() {
 
   if ((aux = popItem(myList, myList->lenght - 1)) != NULL) {
     printf("\npopItem (pos = myList->lenght - 1)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
-    printf("aux = %d\n", aux->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
+    printf("aux = %d\n", aux->pidVirtualVirtual);
   } else {
     printf("\npopItem (pos = myList->lenght - 1) failed!\n");
   }
@@ -350,47 +351,47 @@ int main() {
 
   if ((aux = findItem(myList, 5)) != NULL) {
     printf("\nfindItem (pid = 5)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
-    printf("pid = %d, priority = %d\n", aux->pid, aux->priority);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
+    printf("pid = %d, priority = %d\n", aux->pidVirtualVirtual, aux->priority);
   } else {
     printf("\nfindItem (pid = 5) failed!\n");
   }
 
   if (deleteItem(myList, aux) == 0) {
     printf("\ndeleteItem (pid = 5)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
   } else {
     printf("\ndeleteItem (pid = 5) failed!\n");
   }
 
   if ((aux = getItem(myList, 0)) != NULL) {
     printf("\ngetItem (pos = 0)\n");
-    printf("aux = %d\n", aux->pid);
+    printf("aux = %d\n", aux->pidVirtualVirtual);
   } else {
     printf("getItem (pos = 0) failed!\n");
   }
 
   if (deleteItem(myList, aux) == 0) {
     printf("\ndeleteItem (pos = 0)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
   } else {
     printf("\ndeleteItem (pos = 0) failed!\n");
   }
 
   if ((aux = getItem(myList, myList->lenght - 1)) != NULL) {
     printf("\ngetItem (pos = myList->lenght - 1)\n");
-    printf("aux = %d\n", aux->pid);
+    printf("aux = %d\n", aux->pidVirtualVirtual);
   } else {
     printf("getItem (pos = myList->lenght - 1) failed!\n");
   }
 
   if (deleteItem(myList, aux) == 0) {
     printf("\ndeleteItem (pos = myList->lenght - 1)\n");
-    printf("first = %d\n", myList->first->item->pid);
-    printf("last = %d\n", myList->last->item->pid);
+    printf("first = %d\n", myList->first->item->pidVirtual);
+    printf("last = %d\n", myList->last->item->pidVirtual);
   } else {
     printf("\ndeleteItem (pos = myList->lenght - 1) failed!\n");
   }

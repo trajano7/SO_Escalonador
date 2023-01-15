@@ -2,29 +2,61 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <sys/shm.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 int main() {
-  int queueId;
-  int queueKey = 0x6B69696C;
+  // int queueId;
+  // int queueKey = 0x6B69696C;
+  int shmKey = 0x706964;
+  int shmId;
+  int execProcdPID;
+  struct SharedMem {
+    long lastPid;
+    int execprocdID;
+    int endExecprocd;
+  };
+  struct SharedMem* shmPointer;
   struct KillMsg {
+    long pid;
     int kill;
   } killMsg;
 
-  // Get kill queue
-  if ((queueId = msgget(queueKey, 0777)) < 0) {
-    printf("termina_execprocessod:\n");
-    printf("Error creating queue %d!\n", queueKey);
+  if ((shmId = shmget(shmKey, sizeof(struct SharedMem), 0777)) < 0) {
+    printf("execproc\n");
+    printf("Error getting shared memory %d!\n", shmKey);
     return 1;
   }
+  shmPointer = (struct SharedMem*)shmat(shmId, (char *)0, 0);
+  if (shmPointer == (struct SharedMem*)-1) {
+    printf("execproc\n");
+    printf("Error in attach!\n");
+    return 1;
+  }
+  execProcdPID = shmPointer->execprocdID;
+  printf("execprocdPID = %d, lastPid = %ld\n", execProcdPID, shmPointer->lastPid);
 
-  // Send kill request
-  killMsg.kill = 1;
-  msgsnd(queueId, &killMsg, sizeof(killMsg), 0);
+  shmPointer->endExecprocd = 1;
+  kill(execProcdPID,SIGUSR1);
+
+  return 0;
+
+  // // Get kill queue
+  // if ((queueId = msgget(queueKey, 0777)) < 0) {
+  //   printf("termina_execprocessod:\n");
+  //   printf("Error creating queue %d!\n", queueKey);
+  //   return 1;
+  // }
+
+  // // Send kill request
+  // killMsg.pid = 2121;
+  // killMsg.kill = 1;
+  // msgsnd(queueId, &killMsg, sizeof(killMsg), 0);
 
   return 0;
 }
