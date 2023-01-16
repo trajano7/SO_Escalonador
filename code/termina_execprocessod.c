@@ -45,18 +45,5 @@ int main() {
   kill(execProcdPID,SIGUSR1);
 
   return 0;
-
-  // // Get kill queue
-  // if ((queueId = msgget(queueKey, 0777)) < 0) {
-  //   printf("termina_execprocessod:\n");
-  //   printf("Error creating queue %d!\n", queueKey);
-  //   return 1;
-  // }
-
-  // // Send kill request
-  // killMsg.pid = 2121;
-  // killMsg.kill = 1;
-  // msgsnd(queueId, &killMsg, sizeof(killMsg), 0);
-
-  return 0;
+  
 }

@@ -1,6 +1,8 @@
 #ifndef LIST_H
 #define LIST_H
 
+#include <time.h>
+
 typedef struct ListItem ListItem;
 
 typedef struct Item Item;
@@ -38,10 +40,13 @@ typedef struct {
  */
 struct Item {
   ListItem* parent;
-  char* programName;
+  char programName[30];
   int pidVirtual;
   int pidReal;
   int priority;
+  int quantumTimes;  
+  time_t startTime;
+  int dynamicCriteria;  
   char** params;
 };
 
@@ -58,7 +63,7 @@ ProcList* createList();
  * @param params Process params vector.
  * @return Struct containing info of a process.
  */
-Item* createItem(int, int, char*, char**);
+Item* createItem(int, int, char programName[30], char**);
 
 /**
  * Gets a process struct in the position.

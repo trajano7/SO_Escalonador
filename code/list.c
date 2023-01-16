@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 ProcList* createList() {
   ProcList* list = (ProcList*)malloc(sizeof(ProcList));
@@ -191,13 +192,17 @@ Item* popItem(ProcList* list, unsigned position) {
   return item;
 }
 
-Item* createItem(int pid, int priority, char* programName, char** params) {
+Item* createItem(int pid, int priority, char programName[30], char** params) {
   Item* item = (Item*)malloc(sizeof(Item));
   item->parent = NULL;
   item->pidVirtual = pid;
-  item->programName = programName;
+  strcpy(item->programName, programName);
+  // item->programName = programName;
   item->priority = priority;
   item->params = params;
+  item->quantumTimes = 0; // numero de quantos com processo running
+  item->startTime = time(0);
+  item->dynamicCriteria = 0;
   return item;
 }
 

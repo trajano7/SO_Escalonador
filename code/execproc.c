@@ -87,5 +87,7 @@ int main(int argc, char *argv[])
   if (msgsnd(queueId, &message, sizeof(message) - sizeof(long), 0) == -1)
     printf("Deu erro no envio");
 
+  shmdt(shmPointer);
+
   return 0;
 }
