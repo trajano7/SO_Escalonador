@@ -201,7 +201,11 @@ Item* createItem(int pid, int priority, char programName[30], char** params) {
   item->priority = priority;
   item->params = params;
   item->quantumTimes = 0; // numero de quantos com processo running
-  item->startTime = time(NULL);
+  time_t now;
+  now = time(0);
+  if ((item->startTime = localtime (&now)) == NULL) {
+    printf ("Erro ao extrair tempo\n");
+  }
   item->dynamicCriteria = 0;
   return item;
 }

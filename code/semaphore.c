@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "semaphore.h"
 
-// struct sembuf operacao[2]; 
+struct sembuf operacao[2];
 // int idsem;
 int p_sem(int idsem) {
     operacao[0].sem_num = 0;

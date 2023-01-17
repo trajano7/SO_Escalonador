@@ -45,7 +45,7 @@ struct Item {
   int pidReal;
   int priority;
   int quantumTimes;  
-  time_t startTime;
+  struct tm * startTime;
   int dynamicCriteria;  
   char** params;
 };

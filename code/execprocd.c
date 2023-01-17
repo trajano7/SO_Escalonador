@@ -55,7 +55,7 @@ int main()
   int procShmKey = 0x706964;
   int procQueueKey = 0x70726F63;
   int semaphoreKey = 0x73656d;
-  int schedulerMode = STATIC;
+  int schedulerMode = DYNAMIC;
 
   Item *runningProc = NULL; //Current running process
 
@@ -237,8 +237,14 @@ int allEmpty(ProcList *procLists[3])
 
 void printProcessStatus(Item *proc)
 {
+  time_t now;
+  double seconds;
+
+  time(&now);
+  seconds = difftime(now, mktime(proc->startTime));
+
   printf("Processo %s terminou de executar\n", proc->programName);
-  printf("Tempo de turnaround: %ld\n", (time(NULL) - proc->startTime)/3600);
+  printf("Tempo de turnaround: %.0f\n", seconds);
   printf("Trocas de contexto: %d\n", proc->quantumTimes);
   printf("Pid: %d\n", proc->pidVirtual);
 }
@@ -256,20 +262,36 @@ Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, in
 
     if (schedulerMode == DYNAMIC)
     {
-      // incrementa tempo sem running
+      printf("TENHO UM CHEVETTE 74 TUBARÃO\n");
+      // imprime tempo dos processos
       ListItem *auxProc;
       for (int i = 0; i < 3; i++)
       {
         auxProc = procLists[i]->first;
         for (unsigned int j = 0; j < procLists[i]->lenght; j++)
         {
-          auxProc->item->dynamicCriteria++;
+          printf("process pid: %d\n", auxProc->item->pidVirtual);
+          printf("dynamic criteria: %d\n", auxProc->item->dynamicCriteria);
           auxProc = auxProc->right;
         }
       }
+      printf("TENHO UM CHEVETTE 75 TUBARÃO\n");
 
+      // incrementa tempo sem running
+      // for (int i = 0; i < 3; i++)
+      // {
+      //   auxProc = procLists[i]->first;
+      //   for (unsigned int j = 0; j < procLists[i]->lenght; j++)
+      //   {
+      //     auxProc->item->dynamicCriteria++;
+      //     auxProc = auxProc->right;
+      //   }
+      // }
+
+
+      printf("total quantum: %d\n", *totalQuantum);
       // altera prioridade
-      if (*totalQuantum % 6 == 0)
+      if (*totalQuantum && *totalQuantum % 6 == 0)
       {
         ListItem *auxProc;
         for (int i = 0; i < 3; i++)
@@ -324,6 +346,7 @@ Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, in
       }
     }
 
+
     if (procLists[0]->lenght)
     {
       runningProc = popFront(procLists[0]);
@@ -336,6 +359,7 @@ Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, in
     {
       runningProc = popFront(procLists[2]);
     }
+
   }
   else
   {
@@ -357,8 +381,10 @@ Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, in
   }
   // runningProc->quantumTimes += 1;
 
-  *totalQuantum++;
+  *totalQuantum = *totalQuantum + 1;
+  printf("totalQuantum (dnv): %d\n", *totalQuantum);
   printf("Processo %d (%d) escalonado.\n", runningProc->pidVirtual, runningProc->pidReal);
+  runningProc->dynamicCriteria++; 
   return runningProc;
 }
 
