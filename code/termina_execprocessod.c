@@ -9,23 +9,31 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <sys/sem.h>
+
+#include "semaphore.h"
 
 int main() {
-  // int queueId;
-  // int queueKey = 0x6B69696C;
   int shmKey = 0x706964;
   int shmId;
+  int semaphoreKey = 0x73656d;
+  int idsem;
   int execProcdPID;
   struct SharedMem {
     long lastPid;
     int execprocdID;
-    int endExecprocd;
+    // int endExecprocd;
+    int cancelProcID; //REF#
   };
   struct SharedMem* shmPointer;
   struct KillMsg {
     long pid;
     int kill;
   } killMsg;
+
+  if ((idsem = semget(semaphoreKey, 1, 0x1ff)) < 0) { 
+       printf("erro na criacao do semaforo\n"); exit(1);
+  }
 
   if ((shmId = shmget(shmKey, sizeof(struct SharedMem), 0777)) < 0) {
     printf("execproc\n");
@@ -38,10 +46,10 @@ int main() {
     printf("Error in attach!\n");
     return 1;
   }
+  p_sem(idsem);
   execProcdPID = shmPointer->execprocdID;
-  printf("execprocdPID = %d, lastPid = %ld\n", execProcdPID, shmPointer->lastPid);
-
-  shmPointer->endExecprocd = 1;
+  // shmPointer->endExecprocd = 1;
+  v_sem(idsem);
   kill(execProcdPID,SIGUSR1);
 
   return 0;

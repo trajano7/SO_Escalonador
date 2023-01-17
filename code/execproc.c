@@ -20,12 +20,14 @@ int main(int argc, char *argv[])
   int shmKey = 0x706964;
   int queueKey = 0x70726F63;
   int shmId;
+  int semaphoreKey = 0x73656d;
   int idsem;
   // int *shmPointer;
   struct SharedMem {
     long lastPid;
     int execprocdID;
-    int endExecprocd;
+    // int endExecprocd;
+    int cancelProcID; //REF#
   };
   struct SharedMem* shmPointer;
   struct MsgContent {
@@ -49,7 +51,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if ((idsem = semget(0x73656d, 1, 0x1ff)) < 0) { 
+  if ((idsem = semget(semaphoreKey, 1, 0x1ff)) < 0) { 
        printf("erro na criacao do semaforo\n"); exit(1);
   }
 

@@ -7,10 +7,17 @@ int main(int argc, char *argv[]) {
   // printf("Inside %s!\n", argv[0]);
   printf("PROCESSO FILHO\n");
 
-  for (volatile unsigned i = 0; i < INT_MAX; i++) {
-    for (volatile unsigned i = 0; i < INT_MAX; i++) {
-      for (volatile unsigned i = 0; i < INT_MAX; i++) {}
-    }
+  for (unsigned int i = 0; i < INT_MAX; i++) {
+  }
+  for (unsigned int i = 0; i < INT_MAX; i++) {
+  }
+  for (unsigned int i = 0; i < INT_MAX; i++) {
+  }
+  for (unsigned int i = 0; i < INT_MAX; i++) {
+  }
+  for (unsigned int i = 0; i < INT_MAX; i++) {
+  }
+  for (unsigned int i = 0; i < INT_MAX; i++) {
   }
 
   return 0;

@@ -29,11 +29,13 @@
 */
 
 void terminaExecprocdHandler();
+void cancelProcHandler();
 void alarmHandler();
 int allEmpty(ProcList *procLists[3]);
-void exterminate(int, int, int, int);
+void exterminate(int, int, int);
 void checkProcs(int, ProcList *procLists[3]);
-Item* scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, int schedulerMode);
+void printProcessStatus(Item *proc);
+Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, int schedulerMode);
 // void checkProcs(int, ProcList*, ProcList*, ProcList*);
 
 // 1 algoritmo de escalonar
@@ -41,166 +43,158 @@ Item* scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, in
 // 3 cancela processo
 // 4 terminar o termina processo
 
+int endExecprocd = 0; //Flag that indicates if execprocd has to end, set by termina_processod
+int cancelProc = 0; //Flag that indicates if a cancel_proc happend
+
 int main()
 {
   ProcList *procList = createList();
-  int isRunning = 1;
-  int killQueueKey = 0x6B69696C;
-  int killQueueId;
-  int procShmId;
+  int procShmId, procQueueId, idsem, newProcPid, childReturn;
+  int totalContext = 0;
+  int totalQuantum = 0;
   int procShmKey = 0x706964;
   int procQueueKey = 0x70726F63;
-  int procQueueId;
-  int idsem;
-  int totalQuantum = 0;
-  int totalContext = 0;
+  int semaphoreKey = 0x73656d;
   int schedulerMode = STATIC;
-  int newProcPid;
-  int childReturn;
-  Item *runningProc = NULL;
+
+  Item *runningProc = NULL; //Current running process
 
   struct SharedMem
   {
-    long lastPid;
-    int execprocdID;
-    int endExecprocd;
+    long lastPid; //Last virtual PID, used in execproc
+    int execprocdID; //execprocd PID, used to send signals to execproc
+    // int endExecprocd; //Flag that indicates if execprocd has to end, set by termina_processod
+    int cancelProcID; //REF#
   };
   struct SharedMem sharedMem;
   struct SharedMem *shmPointer;
   sharedMem.execprocdID = getpid();
   sharedMem.lastPid = 0;
-  sharedMem.endExecprocd = 0;
+  // sharedMem.endExecprocd = 0;
+  sharedMem.cancelProcID = -1;
 
   signal(SIGUSR1, terminaExecprocdHandler);
+  signal(SIGUSR2, cancelProcHandler);
   signal(SIGALRM, alarmHandler);
 
-  struct sigaction info, new;
-  sigaction(SIGALRM,NULL,&info);
-  new = info;
-  new.sa_flags = 0;
-  sigaction(SIGALRM,&new,NULL);
-  sigaction(SIGUSR1,NULL,&info);
-  new = info;
-  new.sa_flags = 0;
-  sigaction(SIGUSR1,&new,NULL);
+  //Config SIGALARM and SIGACTION to unlock the wait after a interruption
+  struct sigaction info;
+  sigaction(SIGALRM, NULL, &info);
+  info.sa_flags = 0;
+  sigaction(SIGALRM, &info, NULL);
+  sigaction(SIGUSR1, NULL, &info);
+  info.sa_flags = 0;
+  sigaction(SIGUSR1, &info, NULL);
+  sigaction(SIGUSR2, NULL, &info);
+  info.sa_flags = 0;
+  sigaction(SIGUSR2, &info, NULL);
 
-  if ((idsem = semget(0x73656d, 1, IPC_CREAT | 0x1ff)) < 0)
-  {
-    printf("erro na criacao do semaforo\n");
+  if ((idsem = semget(semaphoreKey, 1, IPC_CREAT | 0x1ff)) < 0) {
+    printf("Error creating semaphore %d!\n", semaphoreKey);
     exit(1);
   }
 
   // Create proc shared memory
-  if ((procShmId = shmget(procShmKey, sizeof(struct SharedMem), IPC_CREAT | 0777)) < 0)
-  {
+  if ((procShmId = shmget(procShmKey, sizeof(struct SharedMem), IPC_CREAT | 0777)) < 0) {
     printf("execprocd:\n");
     printf("Error creating shared memory %d!\n", procShmKey);
     return 1;
   }
   shmPointer = (struct SharedMem *)shmat(procShmId, (char *)0, 0);
-  if (shmPointer == (struct SharedMem *)-1)
-  {
+  if (shmPointer == (struct SharedMem *)-1) {
     printf("execprocd:\n");
     printf("Error in attach!\n");
     return 1;
   }
   *shmPointer = sharedMem;
 
-  // Create proc queue
-  if ((procQueueId = msgget(procQueueKey, IPC_CREAT | 0777)) < 0)
-  {
+  // Create process message queue
+  if ((procQueueId = msgget(procQueueKey, IPC_CREAT | 0777)) < 0) {
     printf("execprocd:\n");
     printf("Error getting queue %d!\n", procQueueKey);
     return 1;
   }
 
+  //Create ready queues
   ProcList *lowPriority = createList();
   ProcList *mediumPriority = createList();
   ProcList *highPriority = createList();
-  ProcList *procLists[3] = {lowPriority, mediumPriority, highPriority};
-  
-  // TODO: excluir esse TODO
-  // struct msqid_ds buf2;
-  // msgctl(procQueueId, IPC_STAT, &buf2);
-  // int msgQueueSize2 = buf2.msg_qnum;
-  // printf("queueID = %d, msgQueueSize = %d\n", procQueueId, msgQueueSize2);
+  ProcList *procLists[3] = {highPriority, mediumPriority, lowPriority};
 
-  while (isRunning)
-  {
-
+  while (1) {
     checkProcs(procQueueId, procLists);
-    if (runningProc != NULL) {
-      printf("ENTROU NO EXECUTADOR %d\n", runningProc->quantumTimes);
-      if (runningProc->quantumTimes == 0) {
-        printf("ENTROU NA PRIMEIRA EXECUCAO\n");
-        if ((newProcPid = fork()) < 0) {
-          printf("erro no fork\n"); exit(1); 
-        } 
-        if (newProcPid == 0) {
-          printf("ENTROU NO EXECL\n");
-          if(execl(runningProc->programName,runningProc->programName, (char *) 0) == -1) {
+    runningProc = scheduler(procLists, &totalQuantum, &totalContext, schedulerMode);
+
+    if (runningProc != NULL)
+    {
+      if (runningProc->quantumTimes == 0)
+      {
+        if ((newProcPid = fork()) < 0)
+        {
+          printf("erro no fork\n");
+          exit(1);
+        }
+        if (newProcPid == 0)
+        {
+          if (execl(runningProc->programName, runningProc->programName, (char *)0) == -1)
+          {
             printf("erro no execl para o programa %s\n", runningProc->programName);
           }
         }
         runningProc->pidReal = newProcPid;
-        runningProc->quantumTimes++;
       }
-      else {
-        printf("ENTROU NO CONTINUE\n");
-        kill(runningProc->pidReal,SIGCONT);
+      else
+      {
+        kill(runningProc->pidReal, SIGCONT);
       }
+      runningProc->quantumTimes++;
 
-      alarm(10);
-      wait(&childReturn);
-      if (alarm(0) != 0) {
-        printf("PROCESSO FILHO DEU EXIT\n");
-        runningProc = NULL;
+      if (!endExecprocd && !cancelProc) {
+        alarm(10);
+        wait(&childReturn);
       }
-      else {
-        kill(runningProc->pidReal,SIGTSTP);
-        pushBack(procLists[runningProc->priority],runningProc);
-        printf("PROCESSO FILHO PAUSADO\n");
+      if (alarm(0) != 0 && !endExecprocd && !cancelProc) {
+        printProcessStatus(runningProc);
       }
-    }
-    else {
-      for (volatile unsigned i = 0; i < INT_MAX; i++) {}
-      // printf("execprocd just left busy waiting!\n");
-    }
-
-    
-
-    
-    // for (volatile unsigned i = 0; i < INT_MAX; i++)
-    // {
-    // } 
-
-    if (!allEmpty(procLists))
-    {
-      printf("picaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
-      printAll(lowPriority);
-      printAll(mediumPriority);
-      printAll(highPriority);
-      printf("teste0 = %s\n", procLists[0]->first->item->programName);
-      runningProc = scheduler(procLists, &totalQuantum, &totalContext, schedulerMode);
-      printf("AQUIIIIIIIIIIIIIIIIIIIIIIIIIIIII: %d\n", runningProc->pidVirtual);
-      printf("picaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2222222222222222222222222222\n");
-      if (runningProc != NULL) printf("EH DIFERENTE DE NULO!EH DIFERENTE DE NULO!EH DIFERENTE DE NULO!\n");
+      else
+      {
+        kill(runningProc->pidReal, SIGTSTP);
+        checkProcs(procQueueId, procLists);
+        pushBack(procLists[runningProc->priority], runningProc);
+      }
+      runningProc = NULL;
     }
 
-    // alarm(10);
-    // wait();
-
-    p_sem(idsem);
-    if (shmPointer->endExecprocd == 1)
-    {
+    if (endExecprocd == 1) {
       // If kill was called, isRunning = false
-      exterminate(killQueueId, procQueueId, procShmId, idsem);
-      isRunning = 0;
+      exterminate(procQueueId, procShmId, idsem);
+      break;
     }
-    v_sem(idsem);
+    if (cancelProc == 1) {
+      p_sem(idsem);
+      int cancelProcPID = shmPointer->cancelProcID;
+      v_sem(idsem);
+      printf("cancel proc PID = %d\n", cancelProcPID);
+      cancelProc = 0;
+    }
   }
 
-  if (runningProc != NULL) kill(runningProc->pidReal, SIGKILL);
+  ListItem* aux;
+
+  for (int i = 0; i < 3; i++) {
+    if (procLists[i]->lenght != 0) {
+      aux = procLists[i]->first;
+      for (int j = 0; j < procLists[i]->lenght; j++) {
+        if(aux->item->quantumTimes > 0) kill(aux->item->pidReal,SIGKILL);
+        aux = aux->right;
+      }
+    }
+  }
+
+  if (runningProc != NULL) {
+    printf("killing running process\n");
+    kill(runningProc->pidReal, SIGKILL);
+  }
   printf("execprocd terminated!\n");
   printf("terminar processos aqui!\n");
   printf("escreve relatorio aqui!\n");
@@ -210,8 +204,18 @@ int main()
   return 0;
 }
 
-void alarmHandler() {
+void alarmHandler()
+{
   return;
+}
+
+void terminaExecprocdHandler()
+{
+  endExecprocd = 1;
+}
+
+void cancelProcHandler() {
+  cancelProc = 1;
 }
 
 int allEmpty(ProcList *procLists[3])
@@ -231,24 +235,21 @@ int allEmpty(ProcList *procLists[3])
   return empty;
 }
 
-Item* scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, int schedulerMode)
+void printProcessStatus(Item *proc)
+{
+  printf("Processo %s terminou de executar\n", proc->programName);
+  printf("Tempo de turnaround: %ld\n", (time(NULL) - proc->startTime)/3600);
+  printf("Trocas de contexto: %d\n", proc->quantumTimes);
+  printf("Pid: %d\n", proc->pidVirtual);
+}
+
+Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, int schedulerMode)
 {
 
-  Item* runningProc;
+  Item *runningProc;
+  int randomProc;
 
-  /*
-    VARIAVEL DO EXECUTA PROCESSO D -> QUANTUMS QUE JA PASSARAM = 0 -> 1 -> 2 ->
-    ultima vez que rodou = QUANTUMS QUE JA PASSARAM;
-    QUANTUS QUE JA PASSARAM - ULTIMA VEZ QUE RODOU > NUM -> AUMENTA PRIORIDADE
-
-
-  */
-
-  // if (mode == DINAMIC)
-  // {
-  //   printf("CALCULANDO PRIORIDADE\n");
-  //   procLists[0]->first->item->quantumTimes
-  // }
+  if(allEmpty(procLists)) return NULL;
 
   if (schedulerMode == STATIC || schedulerMode == DYNAMIC)
   {
@@ -345,41 +346,75 @@ Item* scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, in
     {
       runningProc = popItem(procLists[0], randomNum);
     }
-    else if (randomNum >= procLists[0]->lenght && randomNum < totalLenght - procLists[2]->lenght)
+    else if (randomNum >= procLists[0]->lenght && randomNum < (totalLenght - procLists[2]->lenght))
     {
-      runningProc = popItem(procLists[1], randomNum);
+      runningProc = popItem(procLists[1], randomNum-procLists[0]->lenght);
     }
     else if (randomNum >= procLists[0]->lenght + procLists[1]->lenght)
     {
-      runningProc = popItem(procLists[2], randomNum);
+      runningProc = popItem(procLists[2], randomNum-(procLists[0]->lenght + procLists[1]->lenght));
     }
   }
   // runningProc->quantumTimes += 1;
 
   *totalQuantum++;
-  printf("runningProc: %s\n", runningProc->programName);
+  printf("Processo %d (%d) escalonado.\n", runningProc->pidVirtual, runningProc->pidReal);
   return runningProc;
 }
 
-void terminaExecprocdHandler()
-{
-  return;
-}
-
-void exterminate(int killQueueId, int procQueueId, int procShmId, int idsem)
+void exterminate(int procQueueId, int procShmId, int idsem)
 {
   // Kill proc queue
-  msgctl(procQueueId, IPC_RMID, NULL);
+  if ((msgctl(procQueueId, IPC_RMID, NULL)) == -1) {
+    printf("Message queue remove erro.\n");
+    if (E2BIG == errno)
+      printf("E2BIG");
+    if (EACCES == errno)
+      printf("EACCES");
+    if (EIDRM == errno)
+      printf("EIDRM");
+    if (EINTR == errno)
+      printf("EINTR");
+    if (EINVAL == errno)
+      printf("EINVAL");
+    if (ENOMSG == errno)
+      printf("ENOMSG");    
+  }
   // Kill proc shared memory
-  shmctl(procShmId, IPC_RMID, NULL);
+  if ((shmctl(procShmId, IPC_RMID, NULL)) == -1) {
+    printf("Shared memory remove erro.\n");
+    if (E2BIG == errno)
+      printf("E2BIG");
+    if (EACCES == errno)
+      printf("EACCES");
+    if (EIDRM == errno)
+      printf("EIDRM");
+    if (EINTR == errno)
+      printf("EINTR");
+    if (EINVAL == errno)
+      printf("EINVAL");
+    if (ENOMSG == errno)
+      printf("ENOMSG");    
+  }
   // Remove semaphore
   if ((semctl(idsem, 0, IPC_RMID, 0)) == -1)
   {
-    printf("exterminate: semctl error\n");
+    printf("Semaphore remove erro.\n");
+    if (E2BIG == errno)
+      printf("E2BIG");
+    if (EACCES == errno)
+      printf("EACCES");
+    if (EIDRM == errno)
+      printf("EIDRM");
+    if (EINTR == errno)
+      printf("EINTR");
+    if (EINVAL == errno)
+      printf("EINVAL");
+    if (ENOMSG == errno)
+      printf("ENOMSG");
   }
 }
 
-// void checkProcs(int queueId, ProcList *lowPriority, ProcList *mediumPriority, ProcList *highPriority)
 void checkProcs(int queueId, ProcList *procLists[3])
 {
   struct MsgContent
@@ -401,7 +436,7 @@ void checkProcs(int queueId, ProcList *procLists[3])
   // Get message queue size
   msgctl(queueId, IPC_STAT, &buf2);
   msgQueueSize = buf2.msg_qnum;
-  // printf("buf2.msg_qnum = %ld\n", buf2.msg_qnum);
+
   for (unsigned i = 0; i < msgQueueSize; i++)
   {
     int erro = msgrcv(queueId, &message, sizeof(message) - sizeof(long), 1, 0);
@@ -421,10 +456,6 @@ void checkProcs(int queueId, ProcList *procLists[3])
         printf("ENOMSG");
       return;
     }
-    printf("pid virtual = %s\n", message.msgContent.programName);
-    printf("pid virtual = %d\n", message.msgContent.pidVirtual);
-    printf("priority = %d\n", message.msgContent.priority);
-    // printf("param = %s\n", message.msgContent.params[0]);
 
     proc = createItem(
         message.msgContent.pidVirtual,
@@ -444,13 +475,14 @@ void checkProcs(int queueId, ProcList *procLists[3])
       + QUANTUM TIMES VEZES QUE O QUANTUM OCORREU COM O PROCESSO EM READY
     */
 
-    printf("%d\n", procLists[message.msgContent.priority]->lenght);
-
     pushBack(procLists[message.msgContent.priority], proc);
+
     printf("lenght = %d, procID = %d, name = %s\n",
            procLists[message.msgContent.priority]->lenght,
            procLists[message.msgContent.priority]->first->item->pidVirtual,
            procLists[message.msgContent.priority]->first->item->programName);
-    printf("CELTA 2012\n");
+    printf("Item adicionado na lista de prioridade %d:\n", message.msgContent.priority);
+    printAll(procLists[message.msgContent.priority]);
+    printf("-------------------------\n");
   }
 }
