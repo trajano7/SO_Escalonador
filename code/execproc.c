@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
   struct SharedMem* shmPointer;
   struct MsgContent {
     char programName[30];
-    int pidVirtual;
+    long pidVirtual;
     int priority;
   } msgContent;
   struct Message

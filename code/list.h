@@ -41,9 +41,9 @@ typedef struct {
 struct Item {
   ListItem* parent;
   char programName[30];
-  int pidVirtual;
-  int pidReal;
-  int priority;
+  long pidVirtual;
+  long pidReal;
+  int priority; 
   int quantumTimes;  
   struct tm * startTime;
   int dynamicCriteria;  
@@ -63,7 +63,7 @@ ProcList* createList();
  * @param params Process params vector.
  * @return Struct containing info of a process.
  */
-Item* createItem(int, int, char programName[30], char**);
+Item* createItem(long, int, char programName[30], char**);
 
 /**
  * Gets a process struct in the position.

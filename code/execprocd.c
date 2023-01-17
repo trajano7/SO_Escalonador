@@ -35,7 +35,7 @@ int allEmpty(ProcList *procLists[3]);
 void exterminate(int, int, int);
 void checkProcs(int, ProcList *procLists[3]);
 void printProcessStatus(Item *proc);
-Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, int schedulerMode);
+Item *scheduler(ProcList *procLists[3], int *totalQuantum, int schedulerMode);
 // void checkProcs(int, ProcList*, ProcList*, ProcList*);
 
 // 1 algoritmo de escalonar
@@ -48,13 +48,15 @@ int cancelProc = 0; //Flag that indicates if a cancel_proc happend
 
 int main()
 {
-  ProcList *procList = createList();
-  int procShmId, procQueueId, idsem, newProcPid, childReturn;
-  int totalContext = 0;
+  int procShmId, procQueueId, idsem, childReturn;
+  long newProcPid;
   int totalQuantum = 0;
   int procShmKey = 0x706964;
   int procQueueKey = 0x70726F63;
   int semaphoreKey = 0x73656d;
+  int totalExecuted = 0;  
+  int totalCanceledProcess = 0;  
+
   int schedulerMode = DYNAMIC;
 
   Item *runningProc = NULL; //Current running process
@@ -123,7 +125,7 @@ int main()
 
   while (1) {
     checkProcs(procQueueId, procLists);
-    runningProc = scheduler(procLists, &totalQuantum, &totalContext, schedulerMode);
+    runningProc = scheduler(procLists, &totalQuantum, schedulerMode);
 
     if (runningProc != NULL)
     {
@@ -147,6 +149,9 @@ int main()
       {
         kill(runningProc->pidReal, SIGCONT);
       }
+      printf("\n-------------------------------------");
+      printf("\npid real do processo rodando: %ld\n", runningProc->pidReal);
+      printf("-------------------------------------\n");
       runningProc->quantumTimes++;
 
       if (!endExecprocd && !cancelProc) {
@@ -154,10 +159,13 @@ int main()
         wait(&childReturn);
       }
       if (alarm(0) != 0 && !endExecprocd && !cancelProc) {
+        printf("Processo de pid %ld terminou de executar-----\n", runningProc->pidVirtual);
         printProcessStatus(runningProc);
+        totalExecuted++;
       }
-      else
+      else if (alarm(0) == 0)
       {
+        printf("PAROU!\n");
         kill(runningProc->pidReal, SIGTSTP);
         checkProcs(procQueueId, procLists);
         pushBack(procLists[runningProc->priority], runningProc);
@@ -172,15 +180,37 @@ int main()
     }
     if (cancelProc == 1) {
       p_sem(idsem);
-      int cancelProcPID = shmPointer->cancelProcID;
-      v_sem(idsem);
-      printf("cancel proc PID = %d\n", cancelProcPID);
+      long cancelProcPID = shmPointer->cancelProcID;
+      v_sem(idsem); 
+      ListItem* aux;
+      int foundProcess = 0;
+      for (int i = 0; i < 3; i++) {
+        if (procLists[i]->lenght != 0) {
+          aux = procLists[i]->first;
+          for (int j = 0; j < procLists[i]->lenght; j++) {
+            if(aux->item->pidVirtual == cancelProcPID) {
+              printf("Processo de pid %ld cancelado-----\n", aux->item->pidVirtual);
+              printProcessStatus(aux->item);
+              popItem(procLists[i],j);
+              totalCanceledProcess++;
+              foundProcess = 1;
+              break;
+            }
+            aux = aux->right;
+          }
+          if (foundProcess) break;
+        }
+      }
+      if (!foundProcess) {
+        printf("-------------------------\n");
+        printf("Processo de pid %ld não existe.\n", cancelProcPID);
+        printf("-------------------------\n");
+      } 
       cancelProc = 0;
     }
   }
 
   ListItem* aux;
-
   for (int i = 0; i < 3; i++) {
     if (procLists[i]->lenght != 0) {
       aux = procLists[i]->first;
@@ -196,10 +226,15 @@ int main()
     kill(runningProc->pidReal, SIGKILL);
   }
   printf("execprocd terminated!\n");
-  printf("terminar processos aqui!\n");
-  printf("escreve relatorio aqui!\n");
+  int totalNotFinishedProc = lowPriority->lenght + mediumPriority->lenght + highPriority->lenght;
+  printf("Número de total de processos executados: %d\n", totalExecuted);
+  printf("Número de processos não terminados: %d\n", totalNotFinishedProc);
+  printf("Número de processos cancelados: %d\n", totalCanceledProcess);
+  printf("Número total de trocas de contexto: %d\n", totalQuantum);
 
-  freeList(procList);
+  for (int i = 0; i < 3; i++) {
+    freeList(procLists[i]);
+  }
 
   return 0;
 }
@@ -242,18 +277,21 @@ void printProcessStatus(Item *proc)
 
   time(&now);
   seconds = difftime(now, mktime(proc->startTime));
-
-  printf("Processo %s terminou de executar\n", proc->programName);
+  // printf("-------------------------------------");
+  // printf("Processo %s terminou de executar-----\n", proc->programName);
   printf("Tempo de turnaround: %.0f\n", seconds);
   printf("Trocas de contexto: %d\n", proc->quantumTimes);
-  printf("Pid: %d\n", proc->pidVirtual);
+  printf("Nome do executavel: %s\n", proc->programName);
+  printf("Pid: %ld\n", proc->pidVirtual);
+  printf("-------------------------------------");
 }
 
-Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, int schedulerMode)
+Item *scheduler(ProcList *procLists[3], int *totalQuantum, int schedulerMode)
 {
 
   Item *runningProc;
   int randomProc;
+
 
   if(allEmpty(procLists)) return NULL;
 
@@ -262,85 +300,70 @@ Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, in
 
     if (schedulerMode == DYNAMIC)
     {
-      printf("TENHO UM CHEVETTE 74 TUBARÃO\n");
-      // imprime tempo dos processos
       ListItem *auxProc;
-      for (int i = 0; i < 3; i++)
-      {
-        auxProc = procLists[i]->first;
-        for (unsigned int j = 0; j < procLists[i]->lenght; j++)
-        {
-          printf("process pid: %d\n", auxProc->item->pidVirtual);
-          printf("dynamic criteria: %d\n", auxProc->item->dynamicCriteria);
-          auxProc = auxProc->right;
-        }
-      }
-      printf("TENHO UM CHEVETTE 75 TUBARÃO\n");
-
-      // incrementa tempo sem running
-      // for (int i = 0; i < 3; i++)
-      // {
-      //   auxProc = procLists[i]->first;
-      //   for (unsigned int j = 0; j < procLists[i]->lenght; j++)
-      //   {
-      //     auxProc->item->dynamicCriteria++;
-      //     auxProc = auxProc->right;
-      //   }
-      // }
-
 
       printf("total quantum: %d\n", *totalQuantum);
       // altera prioridade
-      if (*totalQuantum && *totalQuantum % 6 == 0)
+      if (*totalQuantum && *totalQuantum % 3 == 0)
       {
-        ListItem *auxProc;
         for (int i = 0; i < 3; i++)
         {
           auxProc = procLists[i]->first;
           for (unsigned int j = 0; j < procLists[i]->lenght; j++)
           {
+            int alreadyMoved = 0;
             // alta prioridade
             if (i == 0)
             {
-              if (auxProc->item->dynamicCriteria >= 3)
+              if (auxProc->item->dynamicCriteria >= 2)
               {
+                auxProc = auxProc->right;
+                alreadyMoved = 1;
                 Item *auxItem = popItem(procLists[0], j);
                 auxItem->priority = 1;
-                auxProc->item->dynamicCriteria = 0;
+                auxItem->dynamicCriteria = 0;
                 pushBack(procLists[1], auxItem);
               }
             }
             // media prioridade
             if (i == 1)
             {
-              if (auxProc->item->dynamicCriteria >= 3)
+              if (auxProc->item->dynamicCriteria >= 2)
               {
+                auxProc = auxProc->right;
+                alreadyMoved = 1;
                 Item *auxItem = popItem(procLists[1], j);
                 auxItem->priority = 2;
-                auxProc->item->dynamicCriteria = 0;
+                auxItem->dynamicCriteria = 0;
                 pushBack(procLists[2], auxItem);
               }
-              else if (auxProc->item->dynamicCriteria < 3)
+              else if (auxProc->item->dynamicCriteria < 2)
               {
+                auxProc = auxProc->right;
+                alreadyMoved = 1;
                 Item *auxItem = popItem(procLists[1], j);
                 auxItem->priority = 0;
-                auxProc->item->dynamicCriteria = 0;
+                auxItem->dynamicCriteria = 0;
                 pushBack(procLists[0], auxItem);
               }
             }
             // baixa prioridade
             if (i == 2)
             {
-              if (auxProc->item->dynamicCriteria < 3)
+              printf("baixa prioridade\n"); 
+              if (auxProc->item->dynamicCriteria < 2)
               {
-                Item *auxItem = popItem(procLists[0], j);
+                auxProc = auxProc->right;
+                alreadyMoved = 1;
+                Item *auxItem = popItem(procLists[2], j);
                 auxItem->priority = 1;
-                auxProc->item->dynamicCriteria = 0;
+                auxItem->dynamicCriteria = 0;
                 pushBack(procLists[1], auxItem);
               }
             }
-            auxProc->item->dynamicCriteria++;
-            auxProc = auxProc->right;
+            if (!alreadyMoved) {
+              auxProc = auxProc->right;
+            }
           }
         }
       }
@@ -379,11 +402,9 @@ Item *scheduler(ProcList *procLists[3], int *totalQuantum, int *totalContext, in
       runningProc = popItem(procLists[2], randomNum-(procLists[0]->lenght + procLists[1]->lenght));
     }
   }
-  // runningProc->quantumTimes += 1;
 
   *totalQuantum = *totalQuantum + 1;
-  printf("totalQuantum (dnv): %d\n", *totalQuantum);
-  printf("Processo %d (%d) escalonado.\n", runningProc->pidVirtual, runningProc->pidReal);
+  printf("Processo %ld escalonado\n", runningProc->pidVirtual);
   runningProc->dynamicCriteria++; 
   return runningProc;
 }
@@ -446,7 +467,7 @@ void checkProcs(int queueId, ProcList *procLists[3])
   struct MsgContent
   {
     char programName[30];
-    int pidVirtual;
+    long pidVirtual;
     int priority;
   } msgContent;
   struct Message
@@ -503,7 +524,7 @@ void checkProcs(int queueId, ProcList *procLists[3])
 
     pushBack(procLists[message.msgContent.priority], proc);
 
-    printf("lenght = %d, procID = %d, name = %s\n",
+    printf("lenght = %d, procID = %ld, name = %s\n",
            procLists[message.msgContent.priority]->lenght,
            procLists[message.msgContent.priority]->first->item->pidVirtual,
            procLists[message.msgContent.priority]->first->item->programName);

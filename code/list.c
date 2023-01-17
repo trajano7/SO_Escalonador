@@ -192,7 +192,7 @@ Item* popItem(ProcList* list, unsigned position) {
   return item;
 }
 
-Item* createItem(int pid, int priority, char programName[30], char** params) {
+Item* createItem(long pid, int priority, char programName[30], char** params) {
   Item* item = (Item*)malloc(sizeof(Item));
   item->parent = NULL;
   item->pidVirtual = pid;
@@ -214,7 +214,7 @@ void printAll(ProcList* list) {
   ListItem* aux = list->first;
   printf("printAll:\n");
   for (unsigned i = 0; i < list->lenght; i++) {
-    printf("pid %d = %d\n", i, aux->item->pidVirtual);
+    printf("pid %d = %ld\n", i, aux->item->pidVirtual);
     aux = aux->right;
   }
 }
