@@ -20,14 +20,6 @@
 #define DYNAMIC 1
 #define RANDOM 2
 
-/*
- cc -I. execprocd.c -o execprocd -Wall -Wextra -Werror -pedantic -g -O0 -M -MT
- dep/execprocd.d -MT bin/execprocd.o -MP -MF dep/execprocd.d -ggdb -DDEBUG && cc
- -I. execprocd.c -c -Wall -pedantic -Wextra -Werror -ggdb -O0 -DDEBUG -g -o
- bin/execprocd.o && cc -o execprocd bin/execprocd.o bin/list.o -Wall -pedantic
- -Wextra -Werror -ggdb -O0 -DDEBUG -g
-*/
-
 void terminaExecprocdHandler();
 void cancelProcHandler();
 void alarmHandler();
@@ -36,12 +28,6 @@ void exterminate(int, int, int);
 void checkProcs(int, ProcList *procLists[3]);
 void printProcessStatus(Item *proc);
 Item *scheduler(ProcList *procLists[3], int *totalQuantum, int schedulerMode);
-// void checkProcs(int, ProcList*, ProcList*, ProcList*);
-
-// 1 algoritmo de escalonar
-// 2 adicionar os fields pra reconhecer o estado do processo
-// 3 cancela processo
-// 4 terminar o termina processo
 
 int endExecprocd = 0; //Flag that indicates if execprocd has to end, set by termina_processod
 int cancelProc = 0; //Flag that indicates if a cancel_proc happend
@@ -72,7 +58,6 @@ int main()
   struct SharedMem *shmPointer;
   sharedMem.execprocdID = getpid();
   sharedMem.lastPid = 0;
-  // sharedMem.endExecprocd = 0;
   sharedMem.cancelProcID = -1;
 
   signal(SIGUSR1, terminaExecprocdHandler);
@@ -149,23 +134,20 @@ int main()
       {
         kill(runningProc->pidReal, SIGCONT);
       }
-      printf("\n-------------------------------------");
-      printf("\npid real do processo rodando: %ld\n", runningProc->pidReal);
-      printf("-------------------------------------\n");
       runningProc->quantumTimes++;
 
       if (!endExecprocd && !cancelProc) {
         alarm(10);
         wait(&childReturn);
       }
-      if (alarm(0) != 0 && !endExecprocd && !cancelProc) {
+      int leftTime = alarm(0);
+      if (leftTime != 0 && !endExecprocd && !cancelProc) {
         printf("Processo de pid %ld terminou de executar-----\n", runningProc->pidVirtual);
         printProcessStatus(runningProc);
         totalExecuted++;
       }
-      else if (alarm(0) == 0)
+      else if (leftTime == 0 || cancelProc || endExecprocd)
       {
-        printf("PAROU!\n");
         kill(runningProc->pidReal, SIGTSTP);
         checkProcs(procQueueId, procLists);
         pushBack(procLists[runningProc->priority], runningProc);
@@ -202,7 +184,7 @@ int main()
         }
       }
       if (!foundProcess) {
-        printf("-------------------------\n");
+        printf("\n-------------------------\n");
         printf("Processo de pid %ld não existe.\n", cancelProcPID);
         printf("-------------------------\n");
       } 
@@ -277,8 +259,6 @@ void printProcessStatus(Item *proc)
 
   time(&now);
   seconds = difftime(now, mktime(proc->startTime));
-  // printf("-------------------------------------");
-  // printf("Processo %s terminou de executar-----\n", proc->programName);
   printf("Tempo de turnaround: %.0f\n", seconds);
   printf("Trocas de contexto: %d\n", proc->quantumTimes);
   printf("Nome do executavel: %s\n", proc->programName);
@@ -369,7 +349,7 @@ Item *scheduler(ProcList *procLists[3], int *totalQuantum, int schedulerMode)
       }
     }
 
-
+    // get proc to run
     if (procLists[0]->lenght)
     {
       runningProc = popFront(procLists[0]);
@@ -404,7 +384,9 @@ Item *scheduler(ProcList *procLists[3], int *totalQuantum, int schedulerMode)
   }
 
   *totalQuantum = *totalQuantum + 1;
+  printf("--------------------------\n");
   printf("Processo %ld escalonado\n", runningProc->pidVirtual);
+  printf("--------------------------\n");
   runningProc->dynamicCriteria++; 
   return runningProc;
 }
@@ -522,14 +504,14 @@ void checkProcs(int queueId, ProcList *procLists[3])
       + QUANTUM TIMES VEZES QUE O QUANTUM OCORREU COM O PROCESSO EM READY
     */
 
-    pushBack(procLists[message.msgContent.priority], proc);
+    // printf("lenght = %d, procID = %ld, name = %s\n",
+    //        procLists[message.msgContent.priority]->lenght,
+    //        procLists[message.msgContent.priority]->first->item->pidVirtual,
+    //        procLists[message.msgContent.priority]->first->item->programName);
+    // printAll(procLists[message.msgContent.priority]);
+    // printf("-------------------------\n");
 
-    printf("lenght = %d, procID = %ld, name = %s\n",
-           procLists[message.msgContent.priority]->lenght,
-           procLists[message.msgContent.priority]->first->item->pidVirtual,
-           procLists[message.msgContent.priority]->first->item->programName);
-    printf("Item adicionado na lista de prioridade %d:\n", message.msgContent.priority);
-    printAll(procLists[message.msgContent.priority]);
-    printf("-------------------------\n");
+    pushBack(procLists[message.msgContent.priority], proc);
+    printf("Processo de pid %d adicionado na lista de prioridade.\n", message.msgContent.pidVirtual);
   }
 }
