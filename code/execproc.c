@@ -4,17 +4,25 @@
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <sys/sem.h>
 #include <sys/shm.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <sys/sem.h>
 
-#include "semaphore.h"
 #include "list.h"
+#include "semaphore.h"
 
-int main(int argc, char *argv[])
-{
+/*
+cc -I. execproc.c -o execproc -Wall -Wextra -pedantic -g -O0 -M -MT \
+dep/execproc.d -MT bin/execproc.o -MP -MF dep/execproc.d -ggdb -DDEBUG &&
+cc -I. execproc.c -c -Wall -pedantic -Wextra -ggdb -O0 -DDEBUG -g -o \
+bin/execproc.o &&
+cc -o execproc bin/execproc.o bin/list.o bin/semaphore.o -Wall -pedantic \
+-Wextra -ggdb -O0 -DDEBUG -g
+*/
+
+int main(int argc, char *argv[]) {
   int pid;
   int queueId;
   int shmKey = 0x706964;
@@ -22,28 +30,24 @@ int main(int argc, char *argv[])
   int shmId;
   int semaphoreKey = 0x73656d;
   int idsem;
-  // int *shmPointer;
   struct SharedMem {
     long lastPid;
     int execprocdID;
-    // int endExecprocd;
-    int cancelProcID; //REF#
+    int cancelProcID;  // REF#
   };
-  struct SharedMem* shmPointer;
+  struct SharedMem *shmPointer;
   struct MsgContent {
     char programName[30];
     long pidVirtual;
     int priority;
-  } msgContent;
-  struct Message
-  {
+  };
+  struct Message {
     long type;
     struct MsgContent msgContent;
   };
   struct Message message;
 
-  if (argc < 3)
-  {
+  if (argc < 3) {
     printf("execproc\n");
     printf("Error - too few arguments!\n");
     printf("At least proc name and priority are needed:\n");
@@ -51,8 +55,9 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if ((idsem = semget(semaphoreKey, 1, 0x1ff)) < 0) { 
-       printf("erro na criacao do semaforo\n"); exit(1);
+  if ((idsem = semget(semaphoreKey, 1, 0x1ff)) < 0) {
+    printf("erro na criacao do semaforo\n");
+    exit(1);
   }
 
   if ((shmId = shmget(shmKey, sizeof(struct SharedMem), 0x1ff)) < 0) {
@@ -60,8 +65,8 @@ int main(int argc, char *argv[])
     printf("Error getting shared memory %d!\n", shmKey);
     return 1;
   }
-  shmPointer = (struct SharedMem*)shmat(shmId, (char *)0, 0);
-  if (shmPointer == (struct SharedMem*)-1) {
+  shmPointer = (struct SharedMem *)shmat(shmId, (char *)0, 0);
+  if (shmPointer == (struct SharedMem *)-1) {
     printf("execproc\n");
     printf("Error in attach!\n");
     return 1;
@@ -73,8 +78,7 @@ int main(int argc, char *argv[])
   v_sem(idsem);
 
   // Get proc queue
-  if ((queueId = msgget(queueKey, 0777)) < 0)
-  {
+  if ((queueId = msgget(queueKey, 0777)) < 0) {
     printf("execproc:\n");
     printf("Error getting queue %d!\n", queueKey);
     return 1;

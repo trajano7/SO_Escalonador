@@ -1,26 +1,18 @@
 #include <limits.h>
 #include <stdio.h>
-
 #include <time.h>
 
-int main(int argc, char *argv[]) {
+/*
+cc -I. testproc.c -o testproc -Wall -Wextra -pedantic -g -O0 -M -MT \
+dep/testproc.d -MT bin/testproc.o -MP -MF dep/testproc.d -ggdb -DDEBUG &&
+cc -I. testproc.c -c -Wall -pedantic -Wextra -ggdb -O0 -DDEBUG -g -o \
+bin/testproc.o
+cc -o testproc bin/testproc.o -Wall -pedantic -Wextra -ggdb -O0 -DDEBUG -g
+*/
 
+int main() {
   for (unsigned int j = 0; j < 10; j++) {
-    for (unsigned int i = 0; i < INT_MAX; i++) {
-    }
+    for (unsigned int i = 0; i < INT_MAX; i++) {}
   }
-
-  // double seconds = 0;
-
-
-  // time_t now;
-  // now = time(0);
-  // time_t tempoInicio = mktime(localtime (&now));
-
-  // while (seconds < 30) {
-  //   time(&now);
-  //   seconds = difftime(now, tempoInicio);
-  // }
-
   return 0;
 }
